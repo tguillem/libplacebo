@@ -25,6 +25,12 @@ build_opts = [
 ]
 
 link_args = []
+# Meson doesn't seem to add ${prefix/}lib and ${prefix}/include directories
+# into link/includes search directories. This is needed by glslang (that
+# doesn't have a .pc file).
+prefix_option = get_option('prefix')
+prefix_lib = prefix_option + '/lib'
+prefix_include = include_directories(prefix_option + '/include')
 
 cc = meson.get_compiler('c')
 cxx = meson.get_compiler('cpp')
@@ -92,12 +98,12 @@ glslang_min_ver = 2763
 glslang_req = get_option('glslang')
 glslang_pthread_deps = []
 glslang_deps = [
-  cxx.find_library('glslang',     required: glslang_req),
-  cxx.find_library('HLSL',        required: glslang_req),
-  cxx.find_library('OGLCompiler', required: glslang_req),
-  cxx.find_library('OSDependent', required: glslang_req),
-  cxx.find_library('SPIRV',       required: glslang_req),
-  cxx.find_library('SPVRemapper', required: glslang_req),
+  cxx.find_library('glslang',     dirs: prefix_lib, required: glslang_req),
+  cxx.find_library('HLSL',        dirs: prefix_lib, required: glslang_req),
+  cxx.find_library('OGLCompiler', dirs: prefix_lib, required: glslang_req),
+  cxx.find_library('OSDependent', dirs: prefix_lib, required: glslang_req),
+  cxx.find_library('SPIRV',       dirs: prefix_lib, required: glslang_req),
+  cxx.find_library('SPVRemapper', dirs: prefix_lib, required: glslang_req),
 ]
 
 glslang_found = true
@@ -109,11 +115,13 @@ if glslang_found
   glslang_pthread_deps += cxx.find_library('pthread', required: false)
 
   glslang_ver = cxx.get_define('GLSLANG_PATCH_LEVEL',
-      prefix: '#include <glslang/Include/revision.h>'
+      prefix: '#include <glslang/Include/revision.h>',
+      include_directories : prefix_include
   ).to_int()
 
   if glslang_ver >= glslang_min_ver
-    glslang_combined = declare_dependency(dependencies: glslang_deps + glslang_pthread_deps)
+    glslang_combined = declare_dependency(dependencies: glslang_deps + glslang_pthread_deps,
+        include_directories : prefix_include)
   else
     error('glslang revision @0@ too old! Must be at least @1@'
           .format(glslang_ver, glslang_min_ver))
