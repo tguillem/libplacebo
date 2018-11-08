@@ -90,6 +90,7 @@ tests = [
 glslang_combined = disabler()
 glslang_min_ver = 2763
 glslang_req = get_option('glslang')
+glslang_pthread_deps = []
 glslang_deps = [
   cxx.find_library('glslang',     required: glslang_req),
   cxx.find_library('HLSL',        required: glslang_req),
@@ -105,12 +106,14 @@ foreach d : glslang_deps
 endforeach
 
 if glslang_found
+  glslang_pthread_deps += cxx.find_library('pthread', required: false)
+
   glslang_ver = cxx.get_define('GLSLANG_PATCH_LEVEL',
       prefix: '#include <glslang/Include/revision.h>'
   ).to_int()
 
   if glslang_ver >= glslang_min_ver
-    glslang_combined = declare_dependency(dependencies: glslang_deps)
+    glslang_combined = declare_dependency(dependencies: glslang_deps + glslang_pthread_deps)
   else
     error('glslang revision @0@ too old! Must be at least @1@'
           .format(glslang_ver, glslang_min_ver))
